@@ -1,0 +1,154 @@
+#!/bin/sh
+# openrig-herdr: the OpenRig plugin's one script for Herdr. Every subcommand wraps an existing `rig` verb;
+# nothing here keeps its own state about agents or work.
+#
+#   dashboard | needs-you | status | follow | send     (pane entrypoints)
+#   open-kernel                                         (action)
+#   open-pane <pane-id>                                 (action helper: opens one of this plugin's panes)
+#
+# Optional config: $HERDR_PLUGIN_CONFIG_DIR/env.sh is sourced first, e.g. to put `rig` on PATH or set OPENRIG_PORT
+# when Herdr's server was started without your shell profile.
+
+[ -n "${HERDR_PLUGIN_CONFIG_DIR:-}" ] && [ -f "$HERDR_PLUGIN_CONFIG_DIR/env.sh" ] && . "$HERDR_PLUGIN_CONFIG_DIR/env.sh"
+RIG=${OPENRIG_RIG_BIN:-rig}
+HERDR=${HERDR_BIN_PATH:-herdr}
+
+need_rig() {
+  command -v "$RIG" >/dev/null 2>&1 && return 0
+  echo "OpenRig's rig command was not found on PATH."
+  echo "Install OpenRig (npm install -g @openrig/cli), or put PATH/OPENRIG_RIG_BIN in"
+  echo "  ${HERDR_PLUGIN_CONFIG_DIR:-<herdr plugin config-dir openrig>}/env.sh"
+  pause; exit 1
+}
+
+pause() { printf '\n%s' "Press any key to close."; old=$(stty -g 2>/dev/null); stty -icanon -echo 2>/dev/null; dd bs=1 count=1 >/dev/null 2>&1; stty "$old" 2>/dev/null; echo; }
+
+# The Herdr session this plugin runs in, so `rig terminal open` lands in this Herdr, not another one.
+session() {
+  case "${HERDR_SOCKET_PATH:-}" in
+    */herdr/sessions/*/herdr.sock) s=${HERDR_SOCKET_PATH%/herdr.sock}; echo "${s##*/}" ;;
+    *) echo default ;;
+  esac
+}
+
+# Warn when the OpenRig daemon would reach a different Herdr socket than the one this plugin runs in.
+check_endpoint() {
+  want=${HERDR_SOCKET_PATH:-}
+  [ -z "$want" ] && return 0
+  got=$("$RIG" terminal status --provider herdr --session "$(session)" --json 2>/dev/null |
+    node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);console.log(j.providers[0].status.launch.socketPath||"")}catch{console.log("")}})' 2>/dev/null)
+  if [ -n "$got" ] && [ "$got" != "$want" ]; then
+    echo "Note: the OpenRig daemon reaches Herdr at $got,"
+    echo "      but this Herdr listens at $want. Views would open in that other Herdr."
+    echo "      Start the daemon with the same XDG_CONFIG_HOME as Herdr, or open from that Herdr."
+    return 1
+  fi
+  return 0
+}
+
+# Refresh a read-out every 5 s until a key is pressed (q, Esc or any key).
+loop() {
+  old=$(stty -g 2>/dev/null)
+  trap 'stty "$old" 2>/dev/null; exit 0' INT TERM
+  while :; do
+    out=$("$@" 2>&1)
+    printf '\033[H\033[2J%s\n\n%s' "$out" "Refreshes every 5 s. Press any key to close."
+    stty -icanon -echo min 0 time 50 2>/dev/null
+    k=$(dd bs=1 count=1 2>/dev/null)
+    stty "$old" 2>/dev/null
+    [ -n "$k" ] && break
+  done
+  echo
+}
+
+# What needs you: the same /api/attention Feed the OpenRig dashboard shows (human-addressed requests, blockers and
+# updates), plus agents that are waiting at a prompt.
+needs_you_once() {
+  url=${OPENRIG_URL:-}
+  if [ -z "$url" ]; then
+    port=$("$RIG" status --json 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).daemon.port||"")}catch{console.log("")}})')
+    url="http://127.0.0.1:${port:-7433}"
+  fi
+  agents=$("$RIG" ps --nodes -A --json --fields canonicalSessionName,needsAttention,arbitratedNeedsInput,heldReason 2>/dev/null)
+  AGENTS="$agents" node -e '
+const url=process.argv[1];
+const pad=(s,n)=>(s+"").padEnd(n);
+(async()=>{
+  console.log("OpenRig: what needs you   "+new Date().toTimeString().slice(0,8)+"\n");
+  let feed;
+  try{const r=await fetch(url+"/api/attention",{signal:AbortSignal.timeout(5000)});feed=await r.json();}
+  catch(e){console.log("Feed: the OpenRig daemon at "+url+" did not answer ("+e.message+")");}
+  if(feed){
+    const items=feed.items||[];
+    console.log(`Asks and updates for people: ${items.length}`);
+    for(const i of items.slice(0,15)){
+      console.log(`  ${pad(i.urgency||"",8)} ${pad(i.recipient||"",18)} from ${i.asker||"?"}`);
+      console.log(`           ${(i.summary||"").replace(/\s+/g," ").slice(0,140)}`);
+      if(i.source)console.log(`           ${i.source.replace("/api/queue/","rig queue show ")}`);
+    }
+    if(items.length>15)console.log(`  ... ${items.length-15} more`);
+    const down=(feed.sources||[]).filter(s=>s.state!=="available");
+    for(const s of down)console.log(`  (source ${s.source}: ${s.state})`);
+  }
+  let rows=[];try{const j=JSON.parse(process.env.AGENTS||"");rows=j.entries||j.nodes||(Array.isArray(j)?j:[]);}catch{}
+  const ask=rows.filter(r=>r.needsAttention||r.arbitratedNeedsInput||r.heldReason);
+  console.log(`\nAgents waiting at a prompt or held: ${ask.length}`);
+  for(const r of ask){const w=r.heldReason||r.arbitratedNeedsInput||r.needsAttention;
+    console.log(`  ${r.canonicalSessionName}  ${typeof w==="string"?w:(w&&w.reason)||"needs input"}`);}
+  console.log("\nReply in the dashboard: :attention, then :reply <your words>");
+})();' "$url"
+}
+
+case "${1:-}" in
+  dashboard)
+    need_rig; exec "$RIG" tui ;;
+  needs-you)
+    need_rig; loop needs_you_once ;;
+  status)
+    need_rig; loop "$RIG" ps --nodes -A ;;
+  open-kernel)
+    need_rig; check_endpoint
+    "$RIG" terminal open saved:kernel --provider herdr --session "$(session)" ;;
+  follow)
+    need_rig; check_endpoint
+    echo "Follow a task's agents in one workspace. They join and leave as the work moves;"
+    echo "closing a tile never stops an agent."
+    echo
+    printf '%s' "qitem id, slice:<id> or mission:<id>: "; read -r v
+    case "$v" in "") exit 0 ;; qitem-*) v="qitem:$v" ;; esac
+    echo
+    "$RIG" terminal open "$v" --follow --provider herdr --session "$(session)"
+    pause ;;
+  send)
+    need_rig
+    list=$("$RIG" ps --nodes -A --json --fields canonicalSessionName,agentActivity,nodeKind 2>/dev/null |
+      node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let r=[];try{const j=JSON.parse(s);r=j.entries||j.nodes||(Array.isArray(j)?j:[])}catch{}
+        r.filter(x=>x.canonicalSessionName&&(!x.nodeKind||x.nodeKind==="agent")).forEach((x,i)=>console.log(`${i+1} ${x.canonicalSessionName} ${typeof x.agentActivity==="string"?x.agentActivity:(x.agentActivity&&x.agentActivity.state)||""}`))})')
+    [ -z "$list" ] && { echo "No agents found (is the daemon running?)"; pause; exit 1; }
+    echo "Send a message to an agent's terminal (rig send)."; echo
+    echo "$list" | awk '{printf "  %3s  %-40s %s\n",$1,$2,$3}'
+    echo; printf '%s' "Number or session name: "; read -r n
+    case "$n" in ''|*[!0-9]*) seat=$n ;; *) seat=$(echo "$list" | awk -v n="$n" '$1==n{print $2}') ;; esac
+    [ -z "$seat" ] && { echo "Nothing selected."; pause; exit 0; }
+    printf '%s' "Message to $seat: "; read -r msg
+    [ -z "$msg" ] && { echo "Nothing sent."; pause; exit 0; }
+    echo; "$RIG" send "$seat" "$msg"
+    pause ;;
+  open-pane)
+    # Popups are modal and take focus themselves. A tab pane (the dashboard) is reused if one is already open, and its
+    # tab is focused explicitly: on Herdr 0.9.5 `pane open --focus` marks the pane focused but the client stays put.
+    tabid() { node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s).result;
+      const p=j.plugin_pane?j.plugin_pane.pane:(j.panes||[]).find(p=>p.label===process.argv[1]);console.log(p?p.tab_id:"")}catch{console.log("")}})' "$1"; }
+    if [ "$2" = dashboard ]; then
+      t=$("$HERDR" pane list 2>/dev/null | tabid "OpenRig dashboard")
+      if [ -z "$t" ]; then
+        t=$("$HERDR" plugin pane open --plugin "${HERDR_PLUGIN_ID:-openrig}" --entrypoint dashboard --focus 2>/dev/null | tabid)
+        [ -n "$t" ] && "$HERDR" tab rename "$t" OpenRig >/dev/null 2>&1
+      fi
+      [ -n "$t" ] && exec "$HERDR" tab focus "$t"
+      exit 1
+    fi
+    exec "$HERDR" plugin pane open --plugin "${HERDR_PLUGIN_ID:-openrig}" --entrypoint "$2" --focus ;;
+  *)
+    echo "usage: openrig-herdr dashboard|needs-you|status|follow|send|open-kernel|open-pane <id>"; exit 2 ;;
+esac

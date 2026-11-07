@@ -1,0 +1,83 @@
+id = "openrig"
+name = "OpenRig"
+version = "0.1.0"
+min_herdr_version = "0.9.5"
+description = "Your OpenRig agent team inside Herdr: the dashboard, what needs you, the kernel, a task's agents following its work, and sending to a seat. Uses your installed rig CLI."
+# Tested with Herdr 0.9.5 and OpenRig 0.7.9 on Linux x86_64 and macOS arm64. Following is Linux-only (OpenRig Core).
+platforms = ["linux", "macos"]
+
+# Panes: the OpenRig dashboard and short read-outs. All are thin wrappers over existing `rig` verbs.
+[[panes]]
+id = "dashboard"
+title = "OpenRig dashboard"
+placement = "tab"
+command = ["sh", "-c", "exec sh \"$HERDR_PLUGIN_ROOT/bin/openrig-herdr\" \"$@\"", "openrig-herdr", "dashboard"]
+
+[[panes]]
+id = "needs-you"
+title = "OpenRig: needs you"
+placement = "popup"
+width = "90%"
+height = "80%"
+command = ["sh", "-c", "exec sh \"$HERDR_PLUGIN_ROOT/bin/openrig-herdr\" \"$@\"", "openrig-herdr", "needs-you"]
+
+[[panes]]
+id = "status"
+title = "OpenRig: agents"
+placement = "popup"
+width = "90%"
+height = "80%"
+command = ["sh", "-c", "exec sh \"$HERDR_PLUGIN_ROOT/bin/openrig-herdr\" \"$@\"", "openrig-herdr", "status"]
+
+[[panes]]
+id = "follow"
+title = "OpenRig: follow a task, slice or mission"
+placement = "popup"
+width = "80%"
+height = 16
+command = ["sh", "-c", "exec sh \"$HERDR_PLUGIN_ROOT/bin/openrig-herdr\" \"$@\"", "openrig-herdr", "follow"]
+
+[[panes]]
+id = "send"
+title = "OpenRig: send to an agent"
+placement = "popup"
+width = "90%"
+height = "80%"
+command = ["sh", "-c", "exec sh \"$HERDR_PLUGIN_ROOT/bin/openrig-herdr\" \"$@\"", "openrig-herdr", "send"]
+
+# Actions: bind them to keys with [[keys.command]] (see README) or run `herdr plugin action invoke openrig.<id>`.
+[[actions]]
+id = "open-kernel"
+title = "OpenRig: open the operator and advisor"
+contexts = ["global"]
+command = ["sh", "-c", "exec sh \"$HERDR_PLUGIN_ROOT/bin/openrig-herdr\" \"$@\"", "openrig-herdr", "open-kernel"]
+
+[[actions]]
+id = "dashboard"
+title = "OpenRig: open the dashboard"
+contexts = ["global"]
+command = ["sh", "-c", "exec sh \"$HERDR_PLUGIN_ROOT/bin/openrig-herdr\" \"$@\"", "openrig-herdr", "open-pane", "dashboard"]
+
+[[actions]]
+id = "needs-you"
+title = "OpenRig: what needs you"
+contexts = ["global"]
+command = ["sh", "-c", "exec sh \"$HERDR_PLUGIN_ROOT/bin/openrig-herdr\" \"$@\"", "openrig-herdr", "open-pane", "needs-you"]
+
+[[actions]]
+id = "status"
+title = "OpenRig: agents and their state"
+contexts = ["global"]
+command = ["sh", "-c", "exec sh \"$HERDR_PLUGIN_ROOT/bin/openrig-herdr\" \"$@\"", "openrig-herdr", "open-pane", "status"]
+
+[[actions]]
+id = "follow"
+title = "OpenRig: follow a task, slice or mission"
+contexts = ["global"]
+command = ["sh", "-c", "exec sh \"$HERDR_PLUGIN_ROOT/bin/openrig-herdr\" \"$@\"", "openrig-herdr", "open-pane", "follow"]
+
+[[actions]]
+id = "send"
+title = "OpenRig: send to an agent"
+contexts = ["global"]
+command = ["sh", "-c", "exec sh \"$HERDR_PLUGIN_ROOT/bin/openrig-herdr\" \"$@\"", "openrig-herdr", "open-pane", "send"]

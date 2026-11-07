@@ -1,0 +1,8 @@
+OpenRig plugin for Herdr
+Copyright 2026 Mike Schwarz
+
+This product is part of OpenRig (https://github.com/mvschwarz/openrig) and is licensed under the
+Apache License, Version 2.0 (see LICENSE).
+
+It contains no third-party code. At runtime it calls the separately installed `rig` (OpenRig), `node`
+and Herdr (https://herdr.dev); the screenshots show Herdr's interface and OpenRig's own agents.
