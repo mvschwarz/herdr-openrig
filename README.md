@@ -1,5 +1,15 @@
 # OpenRig for Herdr
 
+**An early first step: OpenRig inside Herdr.** This is a preliminary plugin; expect it to grow.
+
+[![Demo: install from GitHub, then every feature with real agents (2 min). Click to watch.](demo/thumbnail.png)](https://github.com/mvschwarz/herdr-openrig/releases/download/v0.1.0/openrig-herdr-demo.mp4)
+
+*Click the image to watch the 2-minute demo (MP4): installing from GitHub, then each feature with a real OpenRig team, including a task view that follows a handoff from one agent to another.*
+
+```sh
+herdr plugin install mvschwarz/herdr-openrig
+```
+
 Your [OpenRig](https://www.openrig.dev) agent team inside [Herdr](https://herdr.dev): open the operator and advisor, see what
 needs you, follow a task's agents as the work moves between them, and send a message to any agent, without leaving
 Herdr.
@@ -30,8 +40,9 @@ action is an existing OpenRig command.
 | Herdr | 0.9.5 (`min_herdr_version`) | 0.9.5 on both |
 | OpenRig | 0.7.9 | 0.7.9 on both |
 
-**Following is Linux-only for now.** OpenRig qualifies follow on Linux Herdr 0.9.5 only; on macOS the follow popup shows OpenRig's own
-answer: `Following is qualified on Linux Herdr 0.9.5/protocol 22 only. (follow_unconfirmed)`. Everything else works on both
+**Follow is Linux-only for now.** A lab test shows it works on macOS once OpenRig Core lifts its platform check, which is
+on the way. Until then the follow popup on macOS shows OpenRig's own answer:
+`Following is qualified on Linux Herdr 0.9.5/protocol 22 only. (follow_unconfirmed)`. Everything else works on both
 platforms. Windows is not supported.
 
 - OpenRig installed (`npm install -g @openrig/cli`), with its daemon running (`rig daemon start`).
