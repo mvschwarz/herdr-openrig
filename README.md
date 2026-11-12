@@ -25,7 +25,7 @@ action is an existing OpenRig command.
 |---|---|---|
 | **Open the operator and advisor** (action `openrig.open-kernel`) | A workspace with your operator, dashboard and advisor as tabs, in the Herdr you are using | `rig terminal open saved:kernel --provider herdr --session <this session>` |
 | **What needs you** (popup `needs-you`) | Asks and updates addressed to people, and agents waiting at a prompt; refreshes every 5 s | the dashboard's Feed (`/api/attention`) and `rig ps --nodes` |
-| **Follow a task, slice or mission** (popup `follow`) | One workspace whose agents join and leave as ownership changes; closing a tile never stops an agent. **Linux only for now** | `rig terminal open <qitem-id or slice:<id> or mission:<id>> --follow` |
+| **Follow a task, slice or mission** (popup `follow`) | One workspace whose agents join and leave as ownership changes; closing a tile never stops an agent. Linux and macOS with OpenRig 0.7.11 or later | `rig terminal open <qitem-id or slice:<id> or mission:<id>> --follow` |
 | **Send to an agent** (popup `send`) | Pick an agent and type a message into its terminal | `rig send` |
 | **Agents and their state** (popup `status`) | Every agent with lifecycle, activity and attention; refreshes every 5 s | `rig ps --nodes -A` |
 | **OpenRig dashboard** (tab `dashboard`) | The full OpenRig dashboard in a Herdr tab; opening it again focuses the same tab | `rig tui` |
@@ -40,8 +40,8 @@ action is an existing OpenRig command.
 | Herdr | 0.9.5 (`min_herdr_version`) | 0.9.5 on both |
 | OpenRig | 0.7.9 | 0.7.9 on both |
 
-**Follow is Linux-only for now.** A lab test shows it works on macOS once OpenRig Core lifts its platform check, which is
-on the way. Until then the follow popup on macOS shows OpenRig's own answer:
+**Follow works on Linux and macOS with OpenRig 0.7.11 or later (Herdr protocol 22).** With OpenRig 0.7.9 or 0.7.10,
+follow is Linux-only: on macOS the popup shows OpenRig's own answer,
 `Following is qualified on Linux Herdr 0.9.5/protocol 22 only. (follow_unconfirmed)`. Everything else works on both
 platforms. Windows is not supported.
 
